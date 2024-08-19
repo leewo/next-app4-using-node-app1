@@ -12,7 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, checkAuthStatus } = useAuth();
 
-  const handleSubmit = async (event: React.FormEvent) => {
+    const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError([]);

@@ -6,7 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: any | null;
   login: (userData: any) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
 }
 
@@ -51,9 +51,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
+  const logout = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/v1/logout", {
+        method: "POST",
+        credentials: 'include'
+      });
+      if (response.ok) {
+        setIsAuthenticated(false);
+        setUser(null);
+      } else {
+        throw new Error('Logout failed');
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      // 에러가 발생해도 클라이언트 상태는 로그아웃 처리
+      setIsAuthenticated(false);
+      setUser(null);
+    }
   };
 
   return (

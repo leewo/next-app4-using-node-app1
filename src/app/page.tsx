@@ -9,13 +9,11 @@ export default function HomePage() {
 
   useEffect(() => {
     const loadAuthStatus = async () => {
-      if (!isAuthenticated && !user) {
-        await checkAuthStatus();
-      }
+      await checkAuthStatus();
       setLoading(false);
     };
     loadAuthStatus();
-  }, [isAuthenticated, user, checkAuthStatus]);
+  }, [checkAuthStatus]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -23,8 +21,8 @@ export default function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {isAuthenticated && user ? (
-        <p>Welcome {user.USER_NAME}</p>
+      {isAuthenticated ? (
+        <p>Welcome {user?.USER_NAME}</p>
       ) : (
         <p>You are not logged in</p>
       )}

@@ -42,17 +42,23 @@ export default function MyPage() {
       });
       const data = await response.json();
       if (response.ok) {
+        setMessage('Password changed successfully. You will be logged out and redirected to the main page.');
+        
         // 비밀번호 변경 성공 시 처리
-        await logout(); // 로그아웃 실행
-        setMessage('Password changed successfully. Please log in again with your new password.');
-        setTimeout(() => {
-          router.push('/'); // 메인 페이지로 이동
-        }, 3000); // 3초 후 이동 (메시지를 볼 수 있도록)
+        try {
+          await logout(); // 서버에 로그아웃 요청 및 클라이언트 상태 업데이트
+          setTimeout(() => {
+            router.push('/'); // 메인 페이지로 이동
+          }, 3000); // 3초 후 이동 (메시지를 볼 수 있도록)
+        } catch (logoutError) {
+          console.error('Logout error:', logoutError);
+          setError('Password changed, but logout failed. Please manually log out and log in again.');
+        }
       } else {
         setError(data.message || 'Failed to change password');
       }
     } catch (error) {
-      setError('An error occurred');
+      setError('An error occurred while changing the password');
     }
   };
 
