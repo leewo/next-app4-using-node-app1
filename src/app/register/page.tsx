@@ -7,12 +7,12 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string[]>([]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
-    setError(null);
+    setError([]);
 
     try {
       const response = await fetch("http://localhost:3001/api/v1/register", {
@@ -47,12 +47,17 @@ export default function RegisterPage() {
 
       console.log("Success:", data);
       // 성공 처리 로직 (예: 로그인 페이지로 리다이렉트)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error:", error);
-      setError(error.message.split(", "));
+      if (error instanceof Error) {
+        setError(error.message.split(", "));
+      } else {
+        setError(["An unexpected error occurred"]);
+      }
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
