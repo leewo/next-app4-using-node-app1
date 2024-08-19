@@ -49,7 +49,7 @@ export default function LoginPage() {
       }
       else {
         console.log("Login successful:", data);
-        login(data.user);
+        await login(data.user); // login 함수가 Promise를 반환하도록 수정
         router.push('/');
       }
     } catch (error: unknown) {

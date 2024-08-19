@@ -5,7 +5,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: any | null;
-  login: (userData: any) => void;
+  login: (userData: any) => Promise<void>;
   logout: () => void;
 }
 
@@ -39,12 +39,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = (userData: any) => {
-    setIsAuthenticated(true);
-    setUser(userData);
+  const login = async (userData: any) => {
+    return new Promise<void>((resolve) => {
+      setIsAuthenticated(true);
+      setUser(userData);
+      resolve();
+    });
   };
 
-  const logout = async () => {
+  const logout = () => {
     setIsAuthenticated(false);
     setUser(null);
   };
@@ -63,5 +66,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export { AuthContext };
