@@ -45,10 +45,11 @@ export default function LoginPage() {
         }
         throw new Error(errorMessages.join(", "));
       }
+      else {
+        console.log("Login successful:", data);
 
-      console.log("Login successful:", data);
-      // 로그인 성공 후 처리 (예: 홈 페이지로 리다이렉트)
-      router.push('/dashboard'); // 대시보드 페이지로 리다이렉트
+        router.push('/');
+      }
     } catch (error: unknown) {
       console.error("Login error:", error);
       if (error instanceof Error) {

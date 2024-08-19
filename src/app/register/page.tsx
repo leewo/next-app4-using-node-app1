@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function RegisterPage() {
@@ -8,6 +9,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string[]>([]);
+  const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -44,9 +46,11 @@ export default function RegisterPage() {
         }
         throw new Error(errorMessages.join(", "));
       }
+      else {
+        console.log("Success:", data);
 
-      console.log("Success:", data);
-      // 성공 처리 로직 (예: 로그인 페이지로 리다이렉트)
+        router.push('/login');
+      }
     } catch (error: unknown) {
       console.error("Error:", error);
       if (error instanceof Error) {
