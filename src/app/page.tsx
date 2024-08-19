@@ -4,12 +4,18 @@ import { useAuth } from './components/authcontext';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, checkAuthStatus } = useAuth();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(false);
-  }, [isAuthenticated, user]);
+    const loadAuthStatus = async () => {
+      if (!isAuthenticated && !user) {
+        await checkAuthStatus();
+      }
+      setLoading(false);
+    };
+    loadAuthStatus();
+  }, [isAuthenticated, user, checkAuthStatus]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -17,8 +23,8 @@ export default function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {isAuthenticated ? (
-        <p>Welcome {user?.USER_NAME}</p>
+      {isAuthenticated && user ? (
+        <p>Welcome {user.USER_NAME}</p>
       ) : (
         <p>You are not logged in</p>
       )}

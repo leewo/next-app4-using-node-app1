@@ -1,12 +1,13 @@
 'use client';
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: any | null;
   login: (userData: any) => Promise<void>;
   logout: () => void;
+  checkAuthStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,11 +16,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any | null>(null);
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
+    if (isAuthenticated && user) {
+      return; // 이미 인증된 상태면 API 호출 스킵
+    }
     try {
       const response = await fetch("http://localhost:3001/api/v1/user", {
         method: "GET",
@@ -32,19 +32,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await response.json();
         setIsAuthenticated(true);
         setUser(data.user);
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
       }
     } catch (error) {
       setIsAuthenticated(false);
       setUser(null);
     }
-  };
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = async (userData: any) => {
-    return new Promise<void>((resolve) => {
-      setIsAuthenticated(true);
-      setUser(userData);
-      resolve();
-    });
+    setIsAuthenticated(true);
+    setUser(userData);
   };
 
   const logout = () => {
@@ -53,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, checkAuthStatus }}>
       {children}
     </AuthContext.Provider>
   );

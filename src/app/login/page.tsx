@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string[]>([]);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, checkAuthStatus } = useAuth();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -50,6 +50,7 @@ export default function LoginPage() {
       else {
         console.log("Login successful:", data);
         await login(data.user); // login 함수가 Promise를 반환하도록 수정
+        await checkAuthStatus(); // 추가: 인증 상태 즉시 확인
         router.push('/');
       }
     } catch (error: unknown) {
