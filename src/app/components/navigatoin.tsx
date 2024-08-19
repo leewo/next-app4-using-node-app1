@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React from 'react';
 import { useAuth } from './authcontext';
 import LogoutButton from './logoutbutton';
+import Logo from './logo';
 
 const Navigation: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -12,8 +13,9 @@ const Navigation: React.FC = () => {
     <nav className="bg-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex-shrink-0">
-            <h1 className="text-white">Logo</h1>
+          <div className="flex-shrink-0 flex items-center">
+            <Logo />
+            <span className="text-white font-bold text-lg">RealEstate</span>
           </div>
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
