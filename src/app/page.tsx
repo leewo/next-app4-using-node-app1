@@ -1,39 +1,17 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useAuth } from './components/authcontext';
 
 export default function HomePage() {
-  const [message, setMessage] = useState("");
-  const [auth, setAuth] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch("http://localhost:3001/api/v1/user",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: 'include'
-          }
-        );
-        const data = await response.json();
-        if (data) {
-          setMessage(`Welcome ${data.user.USER_NAME}`);
-          setAuth(true);
-        }
-      } catch (error: unknown) {
-        setAuth(false);
-        setMessage("You are not logged in");
-      }
-    }
-    )();
-  }, []);
+  const { isAuthenticated, user } = useAuth();
 
   return (
-    <>
-      {message}
-    </>
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      {isAuthenticated ? (
+        <p>Welcome {user?.USER_NAME}</p>
+      ) : (
+        <p>You are not logged in</p>
+      )}
+    </main>
   );
 }
