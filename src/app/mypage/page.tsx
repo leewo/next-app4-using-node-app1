@@ -43,17 +43,7 @@ export default function MyPage() {
       const data = await response.json();
       if (response.ok) {
         setMessage('Password changed successfully. You will be logged out and redirected to the main page.');
-        
-        // 비밀번호 변경 성공 시 처리
-        try {
-          await logout(); // 서버에 로그아웃 요청 및 클라이언트 상태 업데이트
-          setTimeout(() => {
-            router.push('/'); // 메인 페이지로 이동
-          }, 3000); // 3초 후 이동 (메시지를 볼 수 있도록)
-        } catch (logoutError) {
-          console.error('Logout error:', logoutError);
-          setError('Password changed, but logout failed. Please manually log out and log in again.');
-        }
+        await handleLogoutAndRedirect();
       } else {
         setError(data.message || 'Failed to change password');
       }
@@ -87,13 +77,26 @@ export default function MyPage() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessage('User information updated successfully');
-        checkAuthStatus(); // 사용자 정보 재로드
+        const changedFields = Object.keys(updateData).join(' and ');
+        setMessage(`${changedFields} updated successfully. You will be logged out and redirected to the main page.`);
+        await handleLogoutAndRedirect();
       } else {
         setError(data.message || 'Failed to update user information');
       }
     } catch (error) {
-      setError('An error occurred');
+      setError('An error occurred while updating user information');
+    }
+  };
+
+  const handleLogoutAndRedirect = async () => {
+    try {
+      await logout();
+      setTimeout(() => {
+        router.push('/');
+      }, 3000); // 3초 후 메인 페이지로 이동
+    } catch (logoutError) {
+      console.error('Logout error:', logoutError);
+      setError('Update successful, but logout failed. Please manually log out and log in again.');
     }
   };
 
