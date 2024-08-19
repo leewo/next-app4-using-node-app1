@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../components/authcontext';
 
 export default function MyPage() {
-  const { user, checkAuthStatus } = useAuth();
+  const { user, checkAuthStatus, logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
@@ -40,9 +42,12 @@ export default function MyPage() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessage('Password changed successfully');
-        setCurrentPassword('');
-        setNewPassword('');
+        // 비밀번호 변경 성공 시 처리
+        await logout(); // 로그아웃 실행
+        setMessage('Password changed successfully. Please log in again with your new password.');
+        setTimeout(() => {
+          router.push('/'); // 메인 페이지로 이동
+        }, 3000); // 3초 후 이동 (메시지를 볼 수 있도록)
       } else {
         setError(data.message || 'Failed to change password');
       }
