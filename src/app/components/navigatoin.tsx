@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import React from 'react';
 import { useAuth } from './authcontext';
+import LogoutButton from './logoutbutton';
 
 const Navigation: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
     <nav className="bg-gray-800">
@@ -24,9 +25,7 @@ const Navigation: React.FC = () => {
                   <Link href="/mypage" className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                     MyPage
                   </Link>
-                  <button onClick={logout} className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                    Logout
-                  </button>
+                  <LogoutButton />
                 </>
               ) : (
                 <>
