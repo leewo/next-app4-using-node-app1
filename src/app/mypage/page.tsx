@@ -10,6 +10,7 @@ export default function MyPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -20,6 +21,14 @@ export default function MyPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage('');
+    setError('');
+
+    if (currentPassword === newPassword) {
+      setError('New password must be different from the current password');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:3001/api/v1/change-password', {
         method: 'POST',
@@ -35,25 +44,28 @@ export default function MyPage() {
         setCurrentPassword('');
         setNewPassword('');
       } else {
-        setMessage(data.message || 'Failed to change password');
+        setError(data.message || 'Failed to change password');
       }
     } catch (error) {
-      setMessage('An error occurred');
+      setError('An error occurred');
     }
   };
 
   const handleInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage('');
+    setError('');
+
+    const updateData: { name?: string; email?: string } = {};
+    if (name !== user?.USER_NAME) updateData.name = name;
+    if (email !== user?.USER_ID) updateData.email = email;
+
+    if (Object.keys(updateData).length === 0) {
+      setError('No changes detected');
+      return;
+    }
+
     try {
-      const updateData: { name?: string; email?: string } = {};
-      if (name !== user?.USER_NAME) updateData.name = name;
-      if (email !== user?.USER_ID) updateData.email = email;
-
-      if (Object.keys(updateData).length === 0) {
-        setMessage('No changes to update');
-        return;
-      }
-
       const response = await fetch('http://localhost:3001/api/v1/update-info', {
         method: 'POST',
         headers: {
@@ -67,10 +79,10 @@ export default function MyPage() {
         setMessage('User information updated successfully');
         checkAuthStatus(); // 사용자 정보 재로드
       } else {
-        setMessage(data.message || 'Failed to update user information');
+        setError(data.message || 'Failed to update user information');
       }
     } catch (error) {
-      setMessage('An error occurred');
+      setError('An error occurred');
     }
   };
 
@@ -78,6 +90,7 @@ export default function MyPage() {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">My Page</h1>
       {message && <p className="mb-4 text-green-500">{message}</p>}
+      {error && <p className="mb-4 text-red-500">{error}</p>}
 
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Change Password</h2>
