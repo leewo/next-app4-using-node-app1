@@ -27,14 +27,26 @@ export default function RegisterPage() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        const errorMessages = data.errors.map((error: any) => Object.values(error)[0]);
+        let errorMessages = [];
+        if (data.errors && Array.isArray(data.errors)) {
+          errorMessages = data.errors.map((error: any) => {
+            if (typeof error === 'string') return error;
+            if (typeof error === 'object') return Object.values(error)[0];
+            return 'Unknown error';
+          });
+        } else if (data.message) {
+          errorMessages = [data.message];
+        } else {
+          errorMessages = ['An unexpected error occurred'];
+        }
         throw new Error(errorMessages.join(", "));
       }
 
-      const data = await response.json();
       console.log("Success:", data);
+      // 성공 처리 로직 (예: 로그인 페이지로 리다이렉트)
     } catch (error) {
       console.error("Error:", error);
       setError(error.message.split(", "));
@@ -116,12 +128,12 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-            <div className="mt-2 text-center text-sm text-red-600">
-              {error.map((errMsg, index) => (
-                <p key={index}>{errMsg}</p>
-              ))}
-            </div>
-          )}
+              <div className="mt-2 text-center text-sm text-red-600">
+                {Array.isArray(error) ? error.map((errMsg, index) => (
+                  <p key={index}>{errMsg}</p>
+                )) : <p>{error}</p>}
+              </div>
+            )}
           </form>
         </div>
       </div>
