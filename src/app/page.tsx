@@ -20,12 +20,14 @@ export default function HomePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {isAuthenticated ? (
-        <p>Welcome {user?.USER_NAME}</p>
-      ) : (
-        <p>You are not logged in</p>
-      )}
+    <main className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="text-center">
+        {isAuthenticated ? (
+          <p className="text-2xl font-bold text-gray-800">Welcome {user?.USER_NAME}</p>
+        ) : (
+          <p className="text-2xl font-bold text-gray-800">You are not logged in</p>
+        )}
+      </div>
     </main>
   );
 }
