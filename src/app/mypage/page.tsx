@@ -12,14 +12,27 @@ export default function MyPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      setName(user.USER_NAME || '');
-      setEmail(user.USER_ID || '');
-    }
-  }, [user]);
+    const verifyAuth = async () => {
+      await checkAuthStatus();
+      if (!user) {
+        router.push('/login');
+      } else {
+        setName(user.USER_NAME || '');
+        setEmail(user.USER_ID || '');
+        setLoading(false);
+      }
+    };
+
+    verifyAuth();
+  }, [user, checkAuthStatus, router]);
+
+  if (loading) {
+    return <div className="container mx-auto p-4">Loading...</div>;
+  }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
