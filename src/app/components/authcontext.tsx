@@ -8,7 +8,7 @@ interface AuthContextType {
   login: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
-  refreshToken: () => Promise<void>;
+  refreshToken: () => Promise<boolean>; // Update the return type to Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
