@@ -12,27 +12,26 @@ export default function MyPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const verifyAuth = async () => {
-      await checkAuthStatus();
       if (!user) {
-        router.push('/login');
-      } else {
+        await checkAuthStatus();
+      }
+      if (user) {
         setName(user.USER_NAME || '');
         setEmail(user.USER_ID || '');
         setLoading(false);
+      } else {
+        router.push('/login');
       }
     };
 
     verifyAuth();
   }, [user, checkAuthStatus, router]);
-
-  if (loading) {
-    return <div className="container mx-auto p-4">Loading...</div>;
-  }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +54,8 @@ export default function MyPage() {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessage('Password changed successfully. You will be logged out and redirected to the main page.');
-        await handleLogoutAndRedirect();
+        setMessage('Password changed successfully. You will be redirected to the main page in a few seconds.');
+        handleDelayedLogout();
       } else {
         setError(data.message || 'Failed to change password');
       }
@@ -91,8 +90,8 @@ export default function MyPage() {
       const data = await response.json();
       if (response.ok) {
         const changedFields = Object.keys(updateData).join(' and ');
-        setMessage(`${changedFields} updated successfully. You will be logged out and redirected to the main page.`);
-        await handleLogoutAndRedirect();
+        setMessage(`${changedFields} updated successfully. You will be redirected to the main page in a few seconds.`);
+        handleDelayedLogout();
       } else {
         setError(data.message || 'Failed to update user information');
       }
@@ -101,17 +100,26 @@ export default function MyPage() {
     }
   };
 
-  const handleLogoutAndRedirect = async () => {
-    try {
-      await logout();
-      setTimeout(() => {
-        router.push('/');
-      }, 3000); // 3초 후 메인 페이지로 이동
-    } catch (logoutError) {
-      console.error('Logout error:', logoutError);
-      setError('Update successful, but logout failed. Please manually log out and log in again.');
-    }
+  const handleDelayedLogout = () => {
+    setIsRedirecting(true);
+    setTimeout(() => {
+      logout();
+      router.push('/');
+    }, 3000); // 3초 후 로그아웃 및 리다이렉션
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (isRedirecting) {
+    return (
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Redirecting...</h1>
+        <p>{message}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
