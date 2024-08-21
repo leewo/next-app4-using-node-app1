@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
+  refreshToken: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,10 +17,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any | null>(null);
 
-  const checkAuthStatus = useCallback(async () => {
-    if (isAuthenticated && user) {
-      return; // 이미 인증된 상태면 API 호출 스킵
+  const refreshToken = useCallback(async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/v1/refresh", {
+        method: "POST",
+        credentials: 'include'
+      });
+      if (response.ok) {
+        // Access token has been refreshed and set in the cookie by the server
+        return true;
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+        return false;
+      }
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      setIsAuthenticated(false);
+      setUser(null);
+      return false;
     }
+  }, []);
+
+  const checkAuthStatus = useCallback(async () => {
     try {
       const response = await fetch("http://localhost:3001/api/v1/user", {
         method: "GET",
@@ -32,15 +52,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await response.json();
         setIsAuthenticated(true);
         setUser(data.user);
+      } else if (response.status === 401) {
+        // Access token expired, try to refresh
+        const refreshSuccess = await refreshToken();
+        if (refreshSuccess) {
+          await checkAuthStatus(); // Retry after refresh
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
       } else {
         setIsAuthenticated(false);
         setUser(null);
       }
     } catch (error) {
+      console.error("Auth check error:", error);
       setIsAuthenticated(false);
       setUser(null);
     }
-  }, [isAuthenticated, user]);
+  }, [refreshToken]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -72,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, checkAuthStatus }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, checkAuthStatus, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );

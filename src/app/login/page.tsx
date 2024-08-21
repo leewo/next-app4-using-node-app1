@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from "../components/authcontext";
+import api from '../utils/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,7 +19,7 @@ export default function LoginPage() {
     setError([]);
 
     try {
-      const response = await fetch("http://localhost:3001/api/v1/login", {
+      const response = await api("http://localhost:3001/api/v1/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -27,8 +28,8 @@ export default function LoginPage() {
           "email": email,
           "password": password
         }),
-        credentials: 'include', // 쿠키를 포함시키기 위해 필요
       });
+
 
       const data = await response.json();
 
