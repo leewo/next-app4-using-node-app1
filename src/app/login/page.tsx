@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from "../components/authcontext";
 import api from '../utils/api';
@@ -12,6 +12,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string[]>([]);
   const router = useRouter();
   const { login, checkAuthStatus, refreshToken } = useAuth();
+
+  // 페이지 로드 시 URL을 정리하는 useEffect를 추가
+  useEffect(() => {
+    if (window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -60,6 +67,8 @@ export default function LoginPage() {
       } else {
         setError(["An unexpected error occurred"]);
       }
+      // 에러 처리 시 URL 리다이렉트 - 로그인 실패 시 쿼리 파라미터 없이 로그인 페이지로 리다이렉트
+      router.replace('/login');
     } finally {
       setLoading(false);
     }
@@ -83,7 +92,6 @@ export default function LoginPage() {
               <div className="mt-2">
                 <input
                   id="email"
-                  name="email"
                   type="email"
                   autoComplete="email"
                   required
@@ -108,7 +116,6 @@ export default function LoginPage() {
               <div className="mt-2">
                 <input
                   id="password"
-                  name="password"
                   type="password"
                   autoComplete="current-password"
                   required
