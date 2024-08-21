@@ -11,9 +11,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string[]>([]);
   const router = useRouter();
-  const { login, checkAuthStatus } = useAuth();
+  const { login, checkAuthStatus, refreshToken } = useAuth();
 
-    const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError([]);
@@ -28,8 +28,7 @@ export default function LoginPage() {
           "email": email,
           "password": password
         }),
-      });
-
+      }, refreshToken);
 
       const data = await response.json();
 

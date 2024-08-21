@@ -1,8 +1,6 @@
-import { useAuth } from '../components/authcontext';
+// utils/api.ts
 
-const api = async (url: string, options: RequestInit = {}) => {
-  const { refreshToken } = useAuth();
-  
+const api = async (url: string, options: RequestInit = {}, refreshToken: () => Promise<boolean>) => {
   const makeRequest = async () => {
     const response = await fetch(url, {
       ...options,
