@@ -1,21 +1,81 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom'; // Add this line
 import Script from 'next/script';
+import { createRoot } from 'react-dom/client';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+// 네이버 맵 타입 선언
+declare global {
+  interface Window {
+    naver: {
+      maps: {
+        Map: new (element: HTMLElement, options?: any) => any;
+        LatLng: new (lat: number, lng: number) => any;
+        Marker: new (options: any) => any;
+        InfoWindow: new (options: any) => any;
+        Event: any;
+        Size: new (width: number, height: number) => any;
+        Point: new (x: number, y: number) => any;
+        MapOptions: any;
+        Position: any;
+      };
+    };
+    MarkerClustering: any;
+  }
+}
 
 const NAVER_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
 
-const NaverMapEx = () => {
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState<any[]>([]);
-  const [priceData, setPriceData] = useState({});
-  const [filter, setFilter] = useState({ minPrice: 0, maxPrice: Infinity, area: 'all', type: 'all' });
+interface Apartment {
+  complexNo: number;
+  name: string;
+  Address2: string;
+  latitude: number;
+  longitude: number;
+  Area: number;
+}
+
+interface PriceData {
+  Date: number;
+  dealPriceMin: number;
+  dealPriceMax: number;
+  leasePriceMin: number;
+  leasePriceMax: number;
+}
+
+interface PriceHistory {
+  [complexNo: number]: PriceData[];
+}
+
+interface FilterState {
+  minPrice: number;
+  maxPrice: number;
+  area: string;
+  type: string;
+}
+
+const NaverMap: React.FC = () => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<any[]>([]);
+  const [map, setMap] = useState<any>(null);
+  const [priceData, setPriceData] = useState<PriceHistory>({});
+  const [filter, setFilter] = useState<FilterState>({ 
+    minPrice: 0, 
+    maxPrice: Infinity, 
+    area: 'all', 
+    type: 'all' 
+  });
 
   useEffect(() => {
     if (!map) return;
+
+    const clearMarkers = () => {
+      markersRef.current.forEach(marker => {
+        marker.setMap(null);
+      });
+      markersRef.current = [];
+    };
 
     const fetchData = async () => {
       try {
@@ -23,8 +83,8 @@ const NaverMapEx = () => {
           fetch('/api/apartments'),
           fetch('/api/price-history')
         ]);
-        const apartments = await apartmentsResponse.json();
-        const priceHistory = await priceHistoryResponse.json();
+        const apartments: Apartment[] = await apartmentsResponse.json();
+        const priceHistory: PriceHistory = await priceHistoryResponse.json();
         return { apartments, priceHistory };
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -32,14 +92,14 @@ const NaverMapEx = () => {
       }
     };
 
-    const createMarkers = (apartments: any[], priceHistory: any) => {
-      const { naver } = window as any;
+    const createMarkers = (apartments: Apartment[], priceHistory: PriceHistory) => {
+      const { naver } = window;
       return apartments.map(apt => {
-        const latestPrice = priceHistory[apt.complexNo]?.sort((a: any, b: any) => b.Date - a.Date)[0];
+        const latestPrice = priceHistory[apt.complexNo]?.sort((a, b) => b.Date - a.Date)[0];
         if (!latestPrice) return null;
 
         if (latestPrice.dealPriceMin < filter.minPrice || latestPrice.dealPriceMax > filter.maxPrice) return null;
-        if (filter.area !== 'all' && apt.Area !== filter.area) return null;
+        if (filter.area !== 'all' && apt.Area !== parseInt(filter.area)) return null;
         if (filter.type === '매매' && !latestPrice.dealPriceMin) return null;
         if (filter.type === '전세' && !latestPrice.leasePriceMin) return null;
 
@@ -80,7 +140,8 @@ const NaverMapEx = () => {
             setTimeout(() => {
               const chartContainer = document.getElementById(`priceChart-${apt.complexNo}`);
               if (chartContainer && priceHistory[apt.complexNo]) {
-                ReactDOM.render(
+                const root = createRoot(chartContainer);
+                root.render(
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={priceHistory[apt.complexNo]}>
                       <XAxis dataKey="Date" />
@@ -89,8 +150,7 @@ const NaverMapEx = () => {
                       <Line type="monotone" dataKey="dealPriceMin" stroke="#8884d8" />
                       <Line type="monotone" dataKey="leasePriceMin" stroke="#82ca9d" />
                     </LineChart>
-                  </ResponsiveContainer>,
-                  chartContainer
+                  </ResponsiveContainer>
                 );
               }
             }, 0);
@@ -101,13 +161,15 @@ const NaverMapEx = () => {
       }).filter(Boolean);
     };
 
+    clearMarkers();
+
     fetchData().then(({ apartments, priceHistory }) => {
       setPriceData(priceHistory);
       const newMarkers = createMarkers(apartments, priceHistory);
-      setMarkers(newMarkers);
+      markersRef.current = newMarkers;
 
       // 마커 클러스터링
-      const clusterer = new (window as any).MarkerClustering({
+      new window.MarkerClustering({
         minClusterSize: 2,
         maxZoom: 13,
         map: map,
@@ -115,26 +177,21 @@ const NaverMapEx = () => {
         disableClickZoom: false,
         gridSize: 120,
         icons: [
-          { content: '<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:10px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new naver.maps.Size(40, 40) },
-          { content: '<div style="cursor:pointer;width:50px;height:50px;line-height:54px;font-size:12px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new naver.maps.Size(50, 50) },
-          { content: '<div style="cursor:pointer;width:60px;height:60px;line-height:64px;font-size:14px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new naver.maps.Size(60, 60) }
+          { content: '<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:10px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new window.naver.maps.Size(40, 40) },
+          { content: '<div style="cursor:pointer;width:50px;height:50px;line-height:54px;font-size:12px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new window.naver.maps.Size(50, 50) },
+          { content: '<div style="cursor:pointer;width:60px;height:60px;line-height:64px;font-size:14px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new window.naver.maps.Size(60, 60) }
         ]
       });
     });
 
-    return () => {
-      markers.forEach(marker => {
-        marker.setMap(null);
-      });
-    };
   }, [map, filter]);
 
   const initializeMap = () => {
-    const { naver } = window as any;
+    const { naver } = window;
     if (!mapRef.current || !naver) return;
 
     const location = new naver.maps.LatLng(37.5666805, 126.9784147);
-    const mapOptions = {
+    const mapOptions: naver.maps.MapOptions = {
       center: location,
       zoom: 10,
       minZoom: 6,
@@ -143,10 +200,10 @@ const NaverMapEx = () => {
         position: naver.maps.Position.TOP_RIGHT
       }
     };
-    const map = new naver.maps.Map(mapRef.current, mapOptions);
-    setMap(map);
+    const newMap = new naver.maps.Map(mapRef.current, mapOptions);
+    setMap(newMap);
   };
-  
+
   return (
     <>
       <Script 
@@ -191,4 +248,4 @@ const NaverMapEx = () => {
   );
 };
 
-export default NaverMapEx;
+export default NaverMap;
