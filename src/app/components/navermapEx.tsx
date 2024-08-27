@@ -8,21 +8,20 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 // 네이버 맵 타입 선언
 declare global {
   interface Window {
-    naver: {
-      maps: {
-        Map: new (element: HTMLElement, options?: any) => any;
-        LatLng: new (lat: number, lng: number) => any;
-        Marker: new (options: any) => any;
-        InfoWindow: new (options: any) => any;
-        Event: any;
-        Size: new (width: number, height: number) => any;
-        Point: new (x: number, y: number) => any;
-        MapOptions: any;
-        Position: any;
-      };
-    };
+    naver: any;
     MarkerClustering: any;
   }
+}
+
+// MapOptions 인터페이스 정의
+interface MapOptions {
+  center: any;
+  zoom: number;
+  minZoom: number;
+  zoomControl: boolean;
+  zoomControlOptions: {
+    position: any;
+  };
 }
 
 const NAVER_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
@@ -191,7 +190,7 @@ const NaverMap: React.FC = () => {
     if (!mapRef.current || !naver) return;
 
     const location = new naver.maps.LatLng(37.5666805, 126.9784147);
-    const mapOptions: naver.maps.MapOptions = {
+    const mapOptions: MapOptions = {
       center: location,
       zoom: 10,
       minZoom: 6,
