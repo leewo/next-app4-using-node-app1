@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { NaverMap, Marker, useNavermaps, Container as MapDiv, NavermapsProvider } from 'react-naver-maps';
 
 interface Apartment {
@@ -22,18 +22,8 @@ interface FilterState {
 const NaverMapContent: React.FC = () => {
   const navermaps = useNavermaps();
   const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [filter, setFilter] = useState<FilterState>({
-    minPrice: 0,
-    maxPrice: Infinity,
-    area: 'all',
-    type: 'all'
-  });
 
-  useEffect(() => {
-    fetchApartments();
-  }, []);
-
-  const fetchApartments = async () => {
+  const fetchApartments = useCallback(async () => {
     try {
       const response = await fetch('http://localhost:3001/api/v1/apartments');
       const data = await response.json();
@@ -41,7 +31,11 @@ const NaverMapContent: React.FC = () => {
     } catch (error) {
       console.error('Error fetching apartments:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchApartments();
+  }, [fetchApartments]);
 
   if (!navermaps) return null;
 
@@ -64,20 +58,39 @@ const NaverMapContent: React.FC = () => {
 };
 
 const NaverMapComponent: React.FC = () => {
+  const [filter, setFilter] = useState<FilterState>({
+    minPrice: 0,
+    maxPrice: Infinity,
+    area: 'all',
+    type: 'all'
+  });
+
+  const handleFilterChange = (key: keyof FilterState, value: string | number) => {
+    setFilter(prev => ({ ...prev, [key]: value }));
+  };
+
   return (
     <NavermapsProvider ncpClientId={process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <div style={{ padding: '10px', backgroundColor: '#f0f0f0' }}>
-          <input type="number" placeholder="최소 가격" />
-          <input type="number" placeholder="최대 가격" />
-          <select>
+          <input 
+            type="number" 
+            placeholder="최소 가격" 
+            onChange={(e) => handleFilterChange('minPrice', Number(e.target.value))}
+          />
+          <input 
+            type="number" 
+            placeholder="최대 가격" 
+            onChange={(e) => handleFilterChange('maxPrice', Number(e.target.value))}
+          />
+          <select onChange={(e) => handleFilterChange('area', e.target.value)}>
             <option value="all">모든 면적</option>
             <option value="60">60m² 이하</option>
             <option value="85">60m² ~ 85m²</option>
             <option value="135">85m² ~ 135m²</option>
             <option value="136">135m² 초과</option>
           </select>
-          <select>
+          <select onChange={(e) => handleFilterChange('type', e.target.value)}>
             <option value="all">전체</option>
             <option value="매매">매매</option>
             <option value="전세">전세</option>
