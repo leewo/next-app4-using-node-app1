@@ -73,7 +73,7 @@ const NaverMap: React.FC = () => {
     const ne = bounds.getNE();
 
     try {
-      const response = await fetch(`/api/apartments?minLat=${sw.lat()}&maxLat=${ne.lat()}&minLng=${sw.lng()}&maxLng=${ne.lng()}`);
+      const response = await fetch(`http://localhost:3001/api/v1/apartments?minLat=${sw.lat()}&maxLat=${ne.lat()}&minLng=${sw.lng()}&maxLng=${ne.lng()}`);
       const apartments: Apartment[] = await response.json();
       return apartments;
     } catch (error) {
@@ -84,7 +84,7 @@ const NaverMap: React.FC = () => {
 
   const fetchPriceHistory = useCallback(async () => {
     try {
-      const response = await fetch('/api/price-history');
+      const response = await fetch('http://localhost:3001/api/v1/price-history');
       const priceHistory: PriceHistory = await response.json();
       return priceHistory;
     } catch (error) {
@@ -196,7 +196,7 @@ const NaverMap: React.FC = () => {
         ]
       });
     }
-  }, [map, fetchApartmentsInView, createMarkers, priceData]);
+  }, [map, fetchApartmentsInView, createMarkers]);
 
   useEffect(() => {
     if (!map) return;
@@ -204,17 +204,12 @@ const NaverMap: React.FC = () => {
     const fetchInitialData = async () => {
       const priceHistory = await fetchPriceHistory();
       setPriceData(priceHistory);
-      await updateMarkers();
     };
 
     fetchInitialData();
 
-    let debounceTimer: NodeJS.Timeout;
     const handleIdle = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        updateMarkers();
-      }, 300);
+      updateMarkers();
     };
 
     if (window.naver && window.naver.maps) {
@@ -225,7 +220,6 @@ const NaverMap: React.FC = () => {
       if (listenerRef.current && window.naver && window.naver.maps) {
         window.naver.maps.Event.removeListener(listenerRef.current);
       }
-      clearTimeout(debounceTimer);
     };
   }, [map, updateMarkers, fetchPriceHistory]);
 
