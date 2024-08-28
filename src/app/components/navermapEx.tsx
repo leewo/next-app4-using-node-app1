@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Script from 'next/script';
 import { createRoot } from 'react-dom/client';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -65,8 +65,106 @@ const NaverMap: React.FC = () => {
     area: 'all', 
     type: 'all' 
   });
+  const listenerRef = useRef<any>(null);
 
-  useEffect(() => {
+  const fetchApartmentsInView = useCallback(async (map: any) => {
+    const bounds = map.getBounds();
+    const sw = bounds.getSW();
+    const ne = bounds.getNE();
+
+    try {
+      const response = await fetch(`/api/apartments?minLat=${sw.lat()}&maxLat=${ne.lat()}&minLng=${sw.lng()}&maxLng=${ne.lng()}`);
+      const apartments: Apartment[] = await response.json();
+      return apartments;
+    } catch (error) {
+      console.error('Error fetching apartments:', error);
+      return [];
+    }
+  }, []);
+
+  const fetchPriceHistory = useCallback(async () => {
+    try {
+      const response = await fetch('/api/price-history');
+      const priceHistory: PriceHistory = await response.json();
+      return priceHistory;
+    } catch (error) {
+      console.error('Error fetching price history:', error);
+      return {};
+    }
+  }, []);
+
+  const createMarkers = useCallback((apartments: Apartment[], priceHistory: PriceHistory) => {
+    if (!map || !window.naver) return [];
+
+    const { naver } = window;
+    return apartments.map(apt => {
+      const latestPrice = priceHistory[apt.complexNo]?.sort((a, b) => b.Date - a.Date)[0];
+      if (!latestPrice) return null;
+
+      if (latestPrice.dealPriceMin < filter.minPrice || latestPrice.dealPriceMax > filter.maxPrice) return null;
+      if (filter.area !== 'all' && apt.Area !== parseInt(filter.area)) return null;
+      if (filter.type === '매매' && !latestPrice.dealPriceMin) return null;
+      if (filter.type === '전세' && !latestPrice.leasePriceMin) return null;
+
+      const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(apt.latitude, apt.longitude),
+        map: map,
+        title: apt.name,
+        icon: {
+          content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px;">${apt.name.substring(0, 2)}</div>`,
+          anchor: new naver.maps.Point(15, 15)
+        }
+      });
+
+      const infowindow = new naver.maps.InfoWindow({
+        content: `
+          <div style="padding: 10px; max-width: 300px;">
+            <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">${apt.name}</h3>
+            <p style="font-size: 14px; margin-bottom: 5px;">${apt.Address2}</p>
+            <p style="font-size: 12px; color: #666;">복합단지번호: ${apt.complexNo}</p>
+            <p style="font-size: 14px; margin-top: 10px;">매매가: ${latestPrice.dealPriceMin}만원 ~ ${latestPrice.dealPriceMax}만원</p>
+            <p style="font-size: 14px;">전세가: ${latestPrice.leasePriceMin}만원 ~ ${latestPrice.leasePriceMax}만원</p>
+            <div id="priceChart-${apt.complexNo}" style="width: 100%; height: 200px;"></div>
+          </div>
+        `,
+        maxWidth: 300,
+        backgroundColor: "#fff",
+        borderColor: "#1E40AF",
+        borderWidth: 2,
+        anchorSize: new naver.maps.Size(0, 0),
+        pixelOffset: new naver.maps.Point(0, -20)
+      });
+
+      naver.maps.Event.addListener(marker, 'click', () => {
+        if (infowindow.getMap()) {
+          infowindow.close();
+        } else {
+          infowindow.open(map, marker);
+          setTimeout(() => {
+            const chartContainer = document.getElementById(`priceChart-${apt.complexNo}`);
+            if (chartContainer && priceHistory[apt.complexNo]) {
+              const root = createRoot(chartContainer);
+              root.render(
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={priceHistory[apt.complexNo]}>
+                    <XAxis dataKey="Date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="dealPriceMin" stroke="#8884d8" />
+                    <Line type="monotone" dataKey="leasePriceMin" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              );
+            }
+          }, 0);
+        }
+      });
+
+      return marker;
+    }).filter(Boolean);
+  }, [filter, map]);
+
+  const updateMarkers = useCallback(async () => {
     if (!map) return;
 
     const clearMarkers = () => {
@@ -76,98 +174,14 @@ const NaverMap: React.FC = () => {
       markersRef.current = [];
     };
 
-    const fetchData = async () => {
-      try {
-        const [apartmentsResponse, priceHistoryResponse] = await Promise.all([
-          fetch('/api/apartments'),
-          fetch('/api/price-history')
-        ]);
-        const apartments: Apartment[] = await apartmentsResponse.json();
-        const priceHistory: PriceHistory = await priceHistoryResponse.json();
-        return { apartments, priceHistory };
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        return { apartments: [], priceHistory: {} };
-      }
-    };
-
-    const createMarkers = (apartments: Apartment[], priceHistory: PriceHistory) => {
-      const { naver } = window;
-      return apartments.map(apt => {
-        const latestPrice = priceHistory[apt.complexNo]?.sort((a, b) => b.Date - a.Date)[0];
-        if (!latestPrice) return null;
-
-        if (latestPrice.dealPriceMin < filter.minPrice || latestPrice.dealPriceMax > filter.maxPrice) return null;
-        if (filter.area !== 'all' && apt.Area !== parseInt(filter.area)) return null;
-        if (filter.type === '매매' && !latestPrice.dealPriceMin) return null;
-        if (filter.type === '전세' && !latestPrice.leasePriceMin) return null;
-
-        const marker = new naver.maps.Marker({
-          position: new naver.maps.LatLng(apt.latitude, apt.longitude),
-          map: map,
-          title: apt.name,
-          icon: {
-            content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px;">${apt.name.substring(0, 2)}</div>`,
-            anchor: new naver.maps.Point(15, 15)
-          }
-        });
-
-        const infowindow = new naver.maps.InfoWindow({
-          content: `
-            <div style="padding: 10px; max-width: 300px;">
-              <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">${apt.name}</h3>
-              <p style="font-size: 14px; margin-bottom: 5px;">${apt.Address2}</p>
-              <p style="font-size: 12px; color: #666;">복합단지번호: ${apt.complexNo}</p>
-              <p style="font-size: 14px; margin-top: 10px;">매매가: ${latestPrice.dealPriceMin}만원 ~ ${latestPrice.dealPriceMax}만원</p>
-              <p style="font-size: 14px;">전세가: ${latestPrice.leasePriceMin}만원 ~ ${latestPrice.leasePriceMax}만원</p>
-              <div id="priceChart-${apt.complexNo}" style="width: 100%; height: 200px;"></div>
-            </div>
-          `,
-          maxWidth: 300,
-          backgroundColor: "#fff",
-          borderColor: "#1E40AF",
-          borderWidth: 2,
-          anchorSize: new naver.maps.Size(0, 0),
-          pixelOffset: new naver.maps.Point(0, -20)
-        });
-
-        naver.maps.Event.addListener(marker, 'click', () => {
-          if (infowindow.getMap()) {
-            infowindow.close();
-          } else {
-            infowindow.open(map, marker);
-            setTimeout(() => {
-              const chartContainer = document.getElementById(`priceChart-${apt.complexNo}`);
-              if (chartContainer && priceHistory[apt.complexNo]) {
-                const root = createRoot(chartContainer);
-                root.render(
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={priceHistory[apt.complexNo]}>
-                      <XAxis dataKey="Date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="dealPriceMin" stroke="#8884d8" />
-                      <Line type="monotone" dataKey="leasePriceMin" stroke="#82ca9d" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                );
-              }
-            }, 0);
-          }
-        });
-
-        return marker;
-      }).filter(Boolean);
-    };
-
     clearMarkers();
 
-    fetchData().then(({ apartments, priceHistory }) => {
-      setPriceData(priceHistory);
-      const newMarkers = createMarkers(apartments, priceHistory);
-      markersRef.current = newMarkers;
+    const apartments = await fetchApartmentsInView(map);
+    const newMarkers = createMarkers(apartments, priceData);
+    markersRef.current = newMarkers;
 
-      // 마커 클러스터링
+    // 마커 클러스터링
+    if (window.MarkerClustering) {
       new window.MarkerClustering({
         minClusterSize: 2,
         maxZoom: 13,
@@ -181,14 +195,50 @@ const NaverMap: React.FC = () => {
           { content: '<div style="cursor:pointer;width:60px;height:60px;line-height:64px;font-size:14px;color:white;text-align:center;font-weight:bold;background:rgba(30, 64, 175, 0.8);border-radius:50%;">$[count]</div>', size: new window.naver.maps.Size(60, 60) }
         ]
       });
-    });
+    }
+  }, [map, fetchApartmentsInView, createMarkers, priceData]);
 
-  }, [map, filter]);
+  useEffect(() => {
+    if (!map) return;
 
-  const initializeMap = () => {
+    const fetchInitialData = async () => {
+      const priceHistory = await fetchPriceHistory();
+      setPriceData(priceHistory);
+      await updateMarkers();
+    };
+
+    fetchInitialData();
+
+    let debounceTimer: NodeJS.Timeout;
+    const handleIdle = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        updateMarkers();
+      }, 300);
+    };
+
+    if (window.naver && window.naver.maps) {
+      listenerRef.current = window.naver.maps.Event.addListener(map, 'idle', handleIdle);
+    }
+
+    return () => {
+      if (listenerRef.current && window.naver && window.naver.maps) {
+        window.naver.maps.Event.removeListener(listenerRef.current);
+      }
+      clearTimeout(debounceTimer);
+    };
+  }, [map, updateMarkers, fetchPriceHistory]);
+
+  useEffect(() => {
+    if (map) {
+      updateMarkers();
+    }
+  }, [filter, updateMarkers, map]);
+
+  const initializeMap = useCallback(() => {
+    if (!mapRef.current || !window.naver) return;
+
     const { naver } = window;
-    if (!mapRef.current || !naver) return;
-
     const location = new naver.maps.LatLng(37.5666805, 126.9784147);
     const mapOptions: MapOptions = {
       center: location,
@@ -201,7 +251,7 @@ const NaverMap: React.FC = () => {
     };
     const newMap = new naver.maps.Map(mapRef.current, mapOptions);
     setMap(newMap);
-  };
+  }, []);
 
   return (
     <>
