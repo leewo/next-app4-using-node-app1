@@ -58,7 +58,7 @@ const NaverMap: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<any[]>([]);
   const [map, setMap] = useState<any>(null);
-  const [priceData, setPriceData] = useState<PriceHistory>({});
+  const priceDataRef = useRef<PriceHistory>({});
   const [filter, setFilter] = useState<FilterState>({ 
     minPrice: 0, 
     maxPrice: Infinity, 
@@ -75,6 +75,7 @@ const NaverMap: React.FC = () => {
     try {
       const response = await fetch(`http://localhost:3001/api/v1/apartments?minLat=${sw.lat()}&maxLat=${ne.lat()}&minLng=${sw.lng()}&maxLng=${ne.lng()}`);
       const apartments: Apartment[] = await response.json();
+//      console.log('Fetched apartments:', apartments.length);
       return apartments;
     } catch (error) {
       console.error('Error fetching apartments:', error);
@@ -86,6 +87,7 @@ const NaverMap: React.FC = () => {
     try {
       const response = await fetch('http://localhost:3001/api/v1/price-history');
       const priceHistory: PriceHistory = await response.json();
+//      console.log('Fetched price history:', Object.keys(priceHistory).length);
       return priceHistory;
     } catch (error) {
       console.error('Error fetching price history:', error);
@@ -101,7 +103,10 @@ const NaverMap: React.FC = () => {
       const latestPrice = priceHistory[apt.complexNo]?.sort((a, b) => b.Date - a.Date)[0];
       if (!latestPrice) return null;
 
-      if (latestPrice.dealPriceMin < filter.minPrice || latestPrice.dealPriceMax > filter.maxPrice) return null;
+      const dealPrice = (latestPrice.dealPriceMin + latestPrice.dealPriceMax) / 2;
+      const leasePrice = (latestPrice.leasePriceMin + latestPrice.leasePriceMax) / 2;
+
+      if (dealPrice < filter.minPrice || dealPrice > filter.maxPrice) return null;
       if (filter.area !== 'all' && apt.Area !== parseInt(filter.area)) return null;
       if (filter.type === '매매' && !latestPrice.dealPriceMin) return null;
       if (filter.type === '전세' && !latestPrice.leasePriceMin) return null;
@@ -177,7 +182,8 @@ const NaverMap: React.FC = () => {
     clearMarkers();
 
     const apartments = await fetchApartmentsInView(map);
-    const newMarkers = createMarkers(apartments, priceData);
+    const newMarkers = createMarkers(apartments, priceDataRef.current);
+//    console.log('Created markers:', newMarkers.length);
     markersRef.current = newMarkers;
 
     // 마커 클러스터링
@@ -203,7 +209,8 @@ const NaverMap: React.FC = () => {
 
     const fetchInitialData = async () => {
       const priceHistory = await fetchPriceHistory();
-      setPriceData(priceHistory);
+      priceDataRef.current = priceHistory;
+      await updateMarkers();
     };
 
     fetchInitialData();
