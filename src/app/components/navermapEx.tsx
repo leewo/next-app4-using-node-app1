@@ -12,20 +12,17 @@ interface Apartment {
   Area: number;
 }
 
-interface FilterState {
-  minPrice: number;
-  maxPrice: number;
-  area: string;
-  type: string;
-}
-
 const NaverMapContent: React.FC = () => {
   const navermaps = useNavermaps();
   const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [map, setMap] = useState<any>(null);
 
-  const fetchApartments = useCallback(async () => {
+  const fetchApartments = useCallback(async (bounds: any) => {
+    if (!bounds) return;
+
+    const { _min, _max } = bounds;
     try {
-      const response = await fetch('http://localhost:3001/api/v1/apartments');
+      const response = await fetch(`http://localhost:3001/api/v1/apartments?minLat=${_min.y}&maxLat=${_max.y}&minLng=${_min.x}&maxLng=${_max.x}`);
       const data = await response.json();
       setApartments(data);
     } catch (error) {
@@ -34,8 +31,20 @@ const NaverMapContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchApartments();
-  }, [fetchApartments]);
+    if (map) {
+      const updateApartments = () => {
+        const bounds = map.getBounds();
+        fetchApartments(bounds);
+      };
+
+      navermaps.Event.addListener(map, 'idle', updateApartments);
+      updateApartments(); // 초기 로드시 실행
+
+      return () => {
+        navermaps.Event.removeListener(map, 'idle', updateApartments);
+      };
+    }
+  }, [map, fetchApartments, navermaps]);
 
   if (!navermaps) return null;
 
@@ -44,6 +53,7 @@ const NaverMapContent: React.FC = () => {
       <NaverMap 
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
+        ref={setMap}
       >
         {apartments.map((apt) => (
           <Marker
@@ -58,44 +68,9 @@ const NaverMapContent: React.FC = () => {
 };
 
 const NaverMapComponent: React.FC = () => {
-  const [filter, setFilter] = useState<FilterState>({
-    minPrice: 0,
-    maxPrice: Infinity,
-    area: 'all',
-    type: 'all'
-  });
-
-  const handleFilterChange = (key: keyof FilterState, value: string | number) => {
-    setFilter(prev => ({ ...prev, [key]: value }));
-  };
-
   return (
     <NavermapsProvider ncpClientId={process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <div style={{ padding: '10px', backgroundColor: '#f0f0f0' }}>
-          <input 
-            type="number" 
-            placeholder="최소 가격" 
-            onChange={(e) => handleFilterChange('minPrice', Number(e.target.value))}
-          />
-          <input 
-            type="number" 
-            placeholder="최대 가격" 
-            onChange={(e) => handleFilterChange('maxPrice', Number(e.target.value))}
-          />
-          <select onChange={(e) => handleFilterChange('area', e.target.value)}>
-            <option value="all">모든 면적</option>
-            <option value="60">60m² 이하</option>
-            <option value="85">60m² ~ 85m²</option>
-            <option value="135">85m² ~ 135m²</option>
-            <option value="136">135m² 초과</option>
-          </select>
-          <select onChange={(e) => handleFilterChange('type', e.target.value)}>
-            <option value="all">전체</option>
-            <option value="매매">매매</option>
-            <option value="전세">전세</option>
-          </select>
-        </div>
+      <div style={{ height: '100vh' }}>
         <NaverMapContent />
       </div>
     </NavermapsProvider>
