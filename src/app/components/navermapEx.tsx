@@ -27,7 +27,7 @@ interface FilterState {
   type: string;
 }
 
-const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> = ({ apartments, onClose }) => {
+const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void, onApartmentClick: (apt: Apartment) => void }> = ({ apartments, onClose, onApartmentClick }) => {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,10 +37,10 @@ const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> 
   }, [apartments]);
 
   return (
-    <div ref={listRef} className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg max-h-[80vh] w-80 overflow-y-auto">
+    <div ref={listRef} className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg max-h-[80vh] w-80 overflow-y-auto z-10">
       <h3 className="text-lg font-semibold mb-2">Apartments in this area:</h3>
-      <button 
-        onClick={onClose} 
+      <button
+        onClick={onClose}
         className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +49,11 @@ const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> 
       </button>
       <ul className="divide-y divide-gray-200">
         {apartments.map((apt, index) => (
-          <li key={index} className="py-2">
+          <li
+            key={index}
+            className="py-2 cursor-pointer hover:bg-gray-100"
+            onClick={() => onApartmentClick(apt)}
+          >
             <p className="font-medium">{apt.name}</p>
             <p className="text-sm text-gray-600">{apt.address}</p>
           </li>
@@ -100,7 +104,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
 
       // 새 리스너 추가 및 저장
       listenerRef.current = navermaps.Event.addListener(map, 'idle', updateClusters);
-      
+
       updateClusters(); // 초기 로드시 실행
 
       return () => {
@@ -111,13 +115,22 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
     }
   }, [map, fetchClusters, navermaps]);
 
+  const handleApartmentClick = useCallback((apt: Apartment) => {
+    if (map) {
+      map.setCenter(new navermaps.LatLng(apt.latitude, apt.longitude));
+      map.setZoom(17);  // 적절한 줌 레벨로 조정
+      setSelectedCluster(null);
+      setHoveredCluster(null);
+    }
+  }, [map, navermaps]);
+
   if (!navermaps) {
     return <div className="flex items-center justify-center h-full">Loading maps...</div>;
   }
 
   return (
     <MapDiv className="w-full h-full relative">
-      <NaverMap 
+      <NaverMap
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
         ref={setMap}
@@ -140,15 +153,14 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
           />
         ))}
       </NaverMap>
-      {hoveredCluster && !selectedCluster && (
-        <div className="absolute top-4 left-4 bg-white p-2 rounded shadow-md">
-          <strong className="text-sm">{hoveredCluster.count} apartments</strong>
-        </div>
-      )}
-      {selectedCluster && (
-        <ApartmentList 
-          apartments={selectedCluster.apartments} 
-          onClose={() => setSelectedCluster(null)} 
+      {(hoveredCluster || selectedCluster) && (
+        <ApartmentList
+          apartments={(hoveredCluster || selectedCluster).apartments}
+          onClose={() => {
+            setSelectedCluster(null);
+            setHoveredCluster(null);
+          }}
+          onApartmentClick={handleApartmentClick}
         />
       )}
     </MapDiv>
@@ -171,19 +183,19 @@ const NaverMapComponent: React.FC = () => {
     <NavermapsProvider ncpClientId={process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!}>
       <div className="flex flex-col h-screen">
         <div className="bg-gray-100 p-4 flex justify-around items-center">
-          <input 
-            type="number" 
-            placeholder="최소 가격" 
+          <input
+            type="number"
+            placeholder="최소 가격"
             onChange={(e) => handleFilterChange('minPrice', Number(e.target.value))}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <input 
-            type="number" 
-            placeholder="최대 가격" 
+          <input
+            type="number"
+            placeholder="최대 가격"
             onChange={(e) => handleFilterChange('maxPrice', Number(e.target.value) || Infinity)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <select 
+          <select
             onChange={(e) => handleFilterChange('area', e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
@@ -193,7 +205,7 @@ const NaverMapComponent: React.FC = () => {
             <option value="135">85m² ~ 135m²</option>
             <option value="136">135m² 초과</option>
           </select>
-          <select 
+          <select
             onChange={(e) => handleFilterChange('type', e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
