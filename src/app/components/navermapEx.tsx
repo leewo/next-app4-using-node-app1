@@ -70,6 +70,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const [hoveredCluster, setHoveredCluster] = useState<Cluster | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const listenerRef = useRef<any>(null);
+  const mapRef = useRef<any>(null); // mapRef를 추가하여 맵 DOM 요소에 대한 참조를 저장
 
   const fetchClusters = useCallback(async (bounds: any) => {
     if (!bounds) return;
@@ -105,12 +106,19 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
       // 새 리스너 추가 및 저장
       listenerRef.current = navermaps.Event.addListener(map, 'idle', updateClusters);
 
+      // 맵 클릭 이벤트 리스너를 추가하여 맵의 다른 영역을 클릭할 때 selectedCluster와 hoveredCluster를 null로 설정
+      const mapClickListener = navermaps.Event.addListener(map, 'click', () => {
+        setSelectedCluster(null);
+        setHoveredCluster(null);
+      });
+
       updateClusters(); // 초기 로드시 실행
 
       return () => {
         if (listenerRef.current) {
           navermaps.Event.removeListener(listenerRef.current);
         }
+        navermaps.Event.removeListener(mapClickListener);
       };
     }
   }, [map, fetchClusters, navermaps]);
@@ -129,7 +137,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   }
 
   return (
-    <MapDiv className="w-full h-full relative">
+    <MapDiv className="w-full h-full relative" ref={mapRef}>
       <NaverMap
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
@@ -147,7 +155,10 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
               `,
               anchor: new navermaps.Point(20, 20)
             }}
-            onClick={() => setSelectedCluster(cluster)}
+            onClick={(e) => {
+              e.domEvent.stopPropagation(); // 마커 클릭 이벤트가 맵 클릭 이벤트로 전파되는 것을 방지
+              setSelectedCluster(cluster);
+            }}
             onMouseover={() => setHoveredCluster(cluster)}
             onMouseout={() => setHoveredCluster(null)}
           />
