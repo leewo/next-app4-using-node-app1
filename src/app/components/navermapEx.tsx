@@ -27,27 +27,37 @@ interface FilterState {
   type: string;
 }
 
-const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> = ({ apartments, onClose }) => (
-  <div className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg max-h-[80vh] w-80 overflow-y-auto">
-    <h3 className="text-lg font-semibold mb-2">Apartments in this area:</h3>
-    <button 
-      onClick={onClose} 
-      className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-    >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-    <ul className="divide-y divide-gray-200">
-      {apartments.map((apt, index) => (
-        <li key={index} className="py-2">
-          <p className="font-medium">{apt.name}</p>
-          <p className="text-sm text-gray-600">{apt.address}</p>
-        </li>
-      ))}
-    </ul>
-  </div>
-);
+const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> = ({ apartments, onClose }) => {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [apartments]);
+
+  return (
+    <div ref={listRef} className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg max-h-[80vh] w-80 overflow-y-auto">
+      <h3 className="text-lg font-semibold mb-2">Apartments in this area:</h3>
+      <button 
+        onClick={onClose} 
+        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <ul className="divide-y divide-gray-200">
+        {apartments.map((apt, index) => (
+          <li key={index} className="py-2">
+            <p className="font-medium">{apt.name}</p>
+            <p className="text-sm text-gray-600">{apt.address}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 
 const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const navermaps = useNavermaps();
