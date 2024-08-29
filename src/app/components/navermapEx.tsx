@@ -28,38 +28,21 @@ interface FilterState {
 }
 
 const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> = ({ apartments, onClose }) => (
-  <div style={{
-    position: 'absolute',
-    top: '10px',
-    left: '10px',
-    backgroundColor: 'white',
-    padding: '15px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    maxHeight: '80vh',
-    width: '300px',
-    overflowY: 'auto'
-  }}>
-    <h3 style={{ marginTop: 0 }}>Apartments in this area:</h3>
+  <div className="absolute top-4 left-4 bg-white p-4 rounded-lg shadow-lg max-h-[80vh] w-80 overflow-y-auto">
+    <h3 className="text-lg font-semibold mb-2">Apartments in this area:</h3>
     <button 
       onClick={onClose} 
-      style={{ 
-        position: 'absolute', 
-        top: '10px', 
-        right: '10px',
-        background: 'none',
-        border: 'none',
-        fontSize: '18px',
-        cursor: 'pointer'
-      }}
+      className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
     >
-      ×
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
     </button>
-    <ul style={{ listStyleType: 'none', padding: 0 }}>
+    <ul className="divide-y divide-gray-200">
       {apartments.map((apt, index) => (
-        <li key={index} style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-          <strong>{apt.name}</strong><br />
-          <small>{apt.address}</small>
+        <li key={index} className="py-2">
+          <p className="font-medium">{apt.name}</p>
+          <p className="text-sm text-gray-600">{apt.address}</p>
         </li>
       ))}
     </ul>
@@ -119,11 +102,11 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   }, [map, fetchClusters, navermaps]);
 
   if (!navermaps) {
-    return <div>Loading maps...</div>;
+    return <div className="flex items-center justify-center h-full">Loading maps...</div>;
   }
 
   return (
-    <MapDiv style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <MapDiv className="w-full h-full relative">
       <NaverMap 
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
@@ -135,16 +118,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
             position={new navermaps.LatLng(cluster.latitude, cluster.longitude)}
             icon={{
               content: `
-                <div style="
-                  background-color: #1E40AF;
-                  color: white;
-                  padding: 5px 10px;
-                  border-radius: 20px;
-                  font-size: 12px;
-                  font-weight: bold;
-                  cursor: pointer;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                ">
+                <div class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-bold cursor-pointer shadow-md">
                   ${cluster.count}
                 </div>
               `,
@@ -157,17 +131,8 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
         ))}
       </NaverMap>
       {hoveredCluster && !selectedCluster && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          backgroundColor: 'white',
-          padding: '10px',
-          borderRadius: '5px',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-          maxWidth: '200px'
-        }}>
-          <strong>{hoveredCluster.count} apartments</strong>
+        <div className="absolute top-4 left-4 bg-white p-2 rounded shadow-md">
+          <strong className="text-sm">{hoveredCluster.count} apartments</strong>
         </div>
       )}
       {selectedCluster && (
@@ -194,23 +159,23 @@ const NaverMapComponent: React.FC = () => {
 
   return (
     <NavermapsProvider ncpClientId={process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <div style={{ padding: '10px', backgroundColor: '#f0f0f0', display: 'flex', justifyContent: 'space-around' }}>
+      <div className="flex flex-col h-screen">
+        <div className="bg-gray-100 p-4 flex justify-around items-center">
           <input 
             type="number" 
             placeholder="최소 가격" 
             onChange={(e) => handleFilterChange('minPrice', Number(e.target.value))}
-            style={{ padding: '5px', marginRight: '5px' }}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <input 
             type="number" 
             placeholder="최대 가격" 
             onChange={(e) => handleFilterChange('maxPrice', Number(e.target.value) || Infinity)}
-            style={{ padding: '5px', marginRight: '5px' }}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <select 
             onChange={(e) => handleFilterChange('area', e.target.value)}
-            style={{ padding: '5px', marginRight: '5px' }}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">모든 면적</option>
             <option value="60">60m² 이하</option>
@@ -220,7 +185,7 @@ const NaverMapComponent: React.FC = () => {
           </select>
           <select 
             onChange={(e) => handleFilterChange('type', e.target.value)}
-            style={{ padding: '5px' }}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">전체</option>
             <option value="매매">매매</option>
