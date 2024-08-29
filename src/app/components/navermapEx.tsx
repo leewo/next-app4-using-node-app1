@@ -69,7 +69,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const [map, setMap] = useState<any>(null);
   const [hoveredCluster, setHoveredCluster] = useState<Cluster | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
-  const listenerRef = useRef<any>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mapRef = useRef<any>(null); // mapRef를 추가하여 맵 DOM 요소에 대한 참조를 저장
 
   const fetchClusters = useCallback(async (bounds: any) => {
@@ -91,57 +91,68 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
     }
   }, [filter]);
 
-  useEffect(() => {
-    if (map && navermaps) {
-      const updateClusters = () => {
+  // setTimeout을 사용하여 0.5초 동안 추가 호출이 없으면 fetchClusters를 실행
+  const debouncedFetchClusters = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      if (map) {
         const bounds = map.getBounds();
         fetchClusters(bounds);
-      };
-
-      // 이전 리스너 제거
-      if (listenerRef.current) {
-        navermaps.Event.removeListener(listenerRef.current);
       }
+    }, 500);
+  }, [map, fetchClusters]);
 
-      // 새 리스너 추가 및 저장
-      listenerRef.current = navermaps.Event.addListener(map, 'idle', updateClusters);
-
-      // 맵 클릭 이벤트 리스너를 추가하여 맵의 다른 영역을 클릭할 때 selectedCluster와 hoveredCluster를 null로 설정
-      const mapClickListener = navermaps.Event.addListener(map, 'click', () => {
+  useEffect(() => {
+    if (map && navermaps) {
+      const idleListener = navermaps.Event.addListener(map, 'idle', debouncedFetchClusters);  // idle 이벤트 리스너를 debouncedFetchClusters로 변경
+      const clickListener = navermaps.Event.addListener(map, 'click', () => {
         setSelectedCluster(null);
         setHoveredCluster(null);
       });
 
-      updateClusters(); // 초기 로드시 실행
+      // 초기 로딩 시 데이터 조회
+      const initialBounds = map.getBounds();
+      fetchClusters(initialBounds);
 
+      // 컴포넌트가 언마운트되거나 의존성이 변경될 때 타이머를 정리하도록 useEffect 정리 함수에 추가
       return () => {
-        if (listenerRef.current) {
-          navermaps.Event.removeListener(listenerRef.current);
+        navermaps.Event.removeListener(idleListener);
+        navermaps.Event.removeListener(clickListener);
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
         }
-        navermaps.Event.removeListener(mapClickListener);
       };
     }
-  }, [map, fetchClusters, navermaps]);
+  }, [map, debouncedFetchClusters, navermaps, fetchClusters]);
 
   const handleApartmentClick = useCallback((apt: Apartment) => {
-    if (map) {
-      map.setCenter(new navermaps.LatLng(apt.latitude, apt.longitude));
+    if (map && navermaps) {
+      const latLng = new navermaps.LatLng(apt.latitude, apt.longitude);
+      map.setCenter(latLng);
       map.setZoom(17);  // 적절한 줌 레벨로 조정
       setSelectedCluster(null);
       setHoveredCluster(null);
+      // 줌인 후 마커 조회를 위해 debouncedFetchClusters 호출
+      debouncedFetchClusters();
     }
-  }, [map, navermaps]);
+  }, [map, navermaps, debouncedFetchClusters]);
 
   if (!navermaps) {
     return <div className="flex items-center justify-center h-full">Loading maps...</div>;
   }
 
   return (
-    <MapDiv className="w-full h-full relative" ref={mapRef}>
+    <MapDiv className="w-full h-full relative">
       <NaverMap
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
-        ref={setMap}
+        ref={(ref) => {
+          setMap(ref);
+          mapRef.current = ref;
+        }}
       >
         {Array.isArray(clusters) && clusters.map((cluster, index) => (
           <Marker
@@ -160,13 +171,13 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
               setSelectedCluster(cluster);
             }}
             onMouseover={() => setHoveredCluster(cluster)}
-            onMouseout={() => setHoveredCluster(null)}
+            onMouseout={() => !selectedCluster && setHoveredCluster(null)}
           />
         ))}
       </NaverMap>
       {(hoveredCluster || selectedCluster) && (
         <ApartmentList
-          apartments={(hoveredCluster || selectedCluster).apartments}
+          apartments={(selectedCluster || hoveredCluster)!.apartments}
           onClose={() => {
             setSelectedCluster(null);
             setHoveredCluster(null);
