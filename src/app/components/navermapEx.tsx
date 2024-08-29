@@ -12,6 +12,8 @@ interface Apartment {
 }
 
 interface Cluster {
+  latGrid: number;
+  lngGrid: number;
   latitude: number;
   longitude: number;
   count: number;
@@ -30,6 +32,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const [clusters, setClusters] = useState<Cluster[]>([]); // 초기값을 빈 배열로 설정
   const [map, setMap] = useState<any>(null);
   const [hoveredCluster, setHoveredCluster] = useState<Cluster | null>(null);
+  const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const listenerRef = useRef<any>(null);
 
   const fetchClusters = useCallback(async (bounds: any) => {
@@ -81,7 +84,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   }
 
   return (
-    <MapDiv style={{ width: '100%', height: '100%' }}>
+    <MapDiv style={{ width: '100%', height: '100%', position: 'relative' }}>
       <NaverMap 
         defaultCenter={new navermaps.LatLng(37.5666805, 126.9784147)}
         defaultZoom={10}
@@ -92,9 +95,10 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
             key={index}
             position={new navermaps.LatLng(cluster.latitude, cluster.longitude)}
             icon={{
-              content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px;">${cluster.count}</div>`,
+              content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px; cursor: pointer;">${cluster.count}</div>`,
               anchor: new navermaps.Point(15, 15)
             }}
+            onClick={() => setSelectedCluster(cluster)}
             onMouseover={() => setHoveredCluster(cluster)}
             onMouseout={() => setHoveredCluster(null)}
           />
@@ -110,11 +114,34 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
           borderRadius: '5px',
           boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
           maxHeight: '300px',
+          width: '90%',
           overflowY: 'auto'
         }}>
           <h3>Apartments in this area:</h3>
           <ul>
             {hoveredCluster.apartments.map((apt, index) => (
+              <li key={index}>{apt.name} - {apt.address}</li>
+            ))}
+          </ul>
+        </div>
+      )}      
+      {selectedCluster && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          backgroundColor: 'white',
+          padding: '10px',
+          borderRadius: '5px',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+          maxHeight: '300px',
+          width: '90%',
+          overflowY: 'auto'
+        }}>
+          <h3>Apartments in this area:</h3>
+          <button onClick={() => setSelectedCluster(null)} style={{ position: 'absolute', top: '5px', right: '5px' }}>Close</button>
+          <ul style={{ listStyleType: 'none', padding: 0 }}>
+            {selectedCluster.apartments.map((apt, index) => (
               <li key={index}>{apt.name} - {apt.address}</li>
             ))}
           </ul>
