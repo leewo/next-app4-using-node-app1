@@ -6,16 +6,16 @@ import { NaverMap, Marker, useNavermaps, Container as MapDiv, NavermapsProvider 
 interface Apartment {
   complexNo: number;
   name: string;
-  Address2: string;
+  address: string;
   latitude: number;
   longitude: number;
-  Area: number;
 }
 
 interface Cluster {
   latitude: number;
   longitude: number;
   count: number;
+  apartments: Apartment[];
 }
 
 interface FilterState {
@@ -29,6 +29,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const navermaps = useNavermaps();
   const [clusters, setClusters] = useState<Cluster[]>([]); // 초기값을 빈 배열로 설정
   const [map, setMap] = useState<any>(null);
+  const [hoveredCluster, setHoveredCluster] = useState<Cluster | null>(null);
   const listenerRef = useRef<any>(null);
 
   const fetchClusters = useCallback(async (bounds: any) => {
@@ -36,7 +37,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
 
     const { _min, _max } = bounds;
     try {
-      const response = await fetch(`http://localhost:3001/api/v1/apartment-clusters?minLat=${_min.y}&maxLat=${_max.y}&minLng=${_min.x}&maxLng=${_max.x}&minPrice=${filter.minPrice}&maxPrice=${filter.maxPrice}&area=${filter.area}&type=${filter.type}`);
+      const response = await fetch(`http://localhost:3001/api/v1/apartment-clusters?minLat=${_min.y}&maxLat=${_max.y}&minLng=${_min.x}&maxLng=${_max.x}&area=${filter.area}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setClusters(data);
@@ -94,9 +95,31 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
               content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px;">${cluster.count}</div>`,
               anchor: new navermaps.Point(15, 15)
             }}
+            onMouseover={() => setHoveredCluster(cluster)}
+            onMouseout={() => setHoveredCluster(null)}
           />
         ))}
       </NaverMap>
+      {hoveredCluster && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          backgroundColor: 'white',
+          padding: '10px',
+          borderRadius: '5px',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+          maxHeight: '300px',
+          overflowY: 'auto'
+        }}>
+          <h3>Apartments in this area:</h3>
+          <ul>
+            {hoveredCluster.apartments.map((apt, index) => (
+              <li key={index}>{apt.name} - {apt.address}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </MapDiv>
   );
 };
