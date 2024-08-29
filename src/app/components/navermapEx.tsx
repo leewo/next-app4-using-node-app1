@@ -27,6 +27,45 @@ interface FilterState {
   type: string;
 }
 
+const ApartmentList: React.FC<{ apartments: Apartment[], onClose: () => void }> = ({ apartments, onClose }) => (
+  <div style={{
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+    backgroundColor: 'white',
+    padding: '15px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+    maxHeight: '80vh',
+    width: '300px',
+    overflowY: 'auto'
+  }}>
+    <h3 style={{ marginTop: 0 }}>Apartments in this area:</h3>
+    <button 
+      onClick={onClose} 
+      style={{ 
+        position: 'absolute', 
+        top: '10px', 
+        right: '10px',
+        background: 'none',
+        border: 'none',
+        fontSize: '18px',
+        cursor: 'pointer'
+      }}
+    >
+      ×
+    </button>
+    <ul style={{ listStyleType: 'none', padding: 0 }}>
+      {apartments.map((apt, index) => (
+        <li key={index} style={{ marginBottom: '10px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+          <strong>{apt.name}</strong><br />
+          <small>{apt.address}</small>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
   const navermaps = useNavermaps();
   const [clusters, setClusters] = useState<Cluster[]>([]); // 초기값을 빈 배열로 설정
@@ -95,8 +134,21 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
             key={index}
             position={new navermaps.LatLng(cluster.latitude, cluster.longitude)}
             icon={{
-              content: `<div style="background-color: #1E40AF; color: white; padding: 5px; border-radius: 50%; font-size: 10px; cursor: pointer;">${cluster.count}</div>`,
-              anchor: new navermaps.Point(15, 15)
+              content: `
+                <div style="
+                  background-color: #1E40AF;
+                  color: white;
+                  padding: 5px 10px;
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-weight: bold;
+                  cursor: pointer;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                ">
+                  ${cluster.count}
+                </div>
+              `,
+              anchor: new navermaps.Point(20, 20)
             }}
             onClick={() => setSelectedCluster(cluster)}
             onMouseover={() => setHoveredCluster(cluster)}
@@ -104,7 +156,7 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
           />
         ))}
       </NaverMap>
-      {hoveredCluster && (
+      {hoveredCluster && !selectedCluster && (
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -113,39 +165,16 @@ const NaverMapContent: React.FC<{ filter: FilterState }> = ({ filter }) => {
           padding: '10px',
           borderRadius: '5px',
           boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-          maxHeight: '300px',
-          width: '90%',
-          overflowY: 'auto'
+          maxWidth: '200px'
         }}>
-          <h3>Apartments in this area:</h3>
-          <ul>
-            {hoveredCluster.apartments.map((apt, index) => (
-              <li key={index}>{apt.name} - {apt.address}</li>
-            ))}
-          </ul>
+          <strong>{hoveredCluster.count} apartments</strong>
         </div>
-      )}      
+      )}
       {selectedCluster && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          backgroundColor: 'white',
-          padding: '10px',
-          borderRadius: '5px',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-          maxHeight: '300px',
-          width: '90%',
-          overflowY: 'auto'
-        }}>
-          <h3>Apartments in this area:</h3>
-          <button onClick={() => setSelectedCluster(null)} style={{ position: 'absolute', top: '5px', right: '5px' }}>Close</button>
-          <ul style={{ listStyleType: 'none', padding: 0 }}>
-            {selectedCluster.apartments.map((apt, index) => (
-              <li key={index}>{apt.name} - {apt.address}</li>
-            ))}
-          </ul>
-        </div>
+        <ApartmentList 
+          apartments={selectedCluster.apartments} 
+          onClose={() => setSelectedCluster(null)} 
+        />
       )}
     </MapDiv>
   );
@@ -166,25 +195,33 @@ const NaverMapComponent: React.FC = () => {
   return (
     <NavermapsProvider ncpClientId={process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <div style={{ padding: '10px', backgroundColor: '#f0f0f0' }}>
+        <div style={{ padding: '10px', backgroundColor: '#f0f0f0', display: 'flex', justifyContent: 'space-around' }}>
           <input 
             type="number" 
             placeholder="최소 가격" 
             onChange={(e) => handleFilterChange('minPrice', Number(e.target.value))}
+            style={{ padding: '5px', marginRight: '5px' }}
           />
           <input 
             type="number" 
             placeholder="최대 가격" 
             onChange={(e) => handleFilterChange('maxPrice', Number(e.target.value) || Infinity)}
+            style={{ padding: '5px', marginRight: '5px' }}
           />
-          <select onChange={(e) => handleFilterChange('area', e.target.value)}>
+          <select 
+            onChange={(e) => handleFilterChange('area', e.target.value)}
+            style={{ padding: '5px', marginRight: '5px' }}
+          >
             <option value="all">모든 면적</option>
             <option value="60">60m² 이하</option>
             <option value="85">60m² ~ 85m²</option>
             <option value="135">85m² ~ 135m²</option>
             <option value="136">135m² 초과</option>
           </select>
-          <select onChange={(e) => handleFilterChange('type', e.target.value)}>
+          <select 
+            onChange={(e) => handleFilterChange('type', e.target.value)}
+            style={{ padding: '5px' }}
+          >
             <option value="all">전체</option>
             <option value="매매">매매</option>
             <option value="전세">전세</option>
